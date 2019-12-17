@@ -1,3 +1,6 @@
 logs
 working
 __pycache__
+compare_aligns
+venv
+.history*
