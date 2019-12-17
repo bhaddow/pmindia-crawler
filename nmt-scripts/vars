@@ -1,0 +1,12 @@
+working_dir=__WORKING_DIR__
+
+src=__SRC__
+tgt=__TGT__
+pair=$tgt$src
+
+moses_scripts=__MOSES_SCRIPTS__
+marian_bin=__MARIAN_BIN__
+bpe_scripts=__SUBWORD_MT__
+
+devices="__GPUS__" 
+

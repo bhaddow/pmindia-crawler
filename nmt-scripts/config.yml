@@ -1,0 +1,37 @@
+type: s2s
+disp-freq: 200
+save-freq: 2000
+max-length: 100
+keep-best: true
+
+dropout-rnn: 0.2
+dropout-src: 0.1
+dropout-trg: 0.1
+
+valid-freq: 2000
+valid-max-length: 80
+valid-metrics:
+  - cross-entropy
+  - perplexity
+  - translation
+quiet-translation: true
+valid-mini-batch: 16
+beam-size: 12
+normalize: 1.0
+
+layer-normalization: true
+label-smoothing: 0.1
+skip: true
+enc-type: bidirectional
+enc-depth: 1
+dec-cell-base-depth: 2
+dec-depth: 1
+
+learn-rate: 0.0001
+lr-report: true
+clip-norm: 5
+tied-embeddings: true
+exponential-smoothing: 1e-4
+sync-sgd: true
+early-stopping: 10
+

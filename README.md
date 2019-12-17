@@ -1,2 +1,2 @@
-# pmindia-crawl
-Code for extracting parallel corpora from pmindia
+Code for crawling the pmindia site
+

@@ -1,0 +1,275 @@
+#
+# Snakefile to set up nmt experiments
+#
+
+ILANGS = ["hi", "as", "bn", "kn", "ml", "mni", "mr", "or", "pa", "ta", "te", "ur", "gu"]
+MOSES_SCRIPTS = "/home/bhaddow/moses.new/scripts"
+INDIC_NLP = "/home/bhaddow/code/indic_nlp_library/bhaddow/src"
+MARIAN_BIN = "/home/bhaddow/code/marian/dev-github/build-63e1cfe"
+CORPUS = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/working/release/parallel/pmindia.v1."
+TEMPLATE = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/nmt-scripts"
+SUBWORD_NMT = "/home/bhaddow/tools/subword-nmt/subword_nmt"
+BPE_MERGES = 10000
+EXPT_DIR = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/working/nmt"
+
+workdir: EXPT_DIR
+
+def get_expt_files(wildcards):
+  expt_files = []
+  for ilang in ILANGS:
+    for lang in "en", ilang:
+      expt_files.append("{}-en/train.bpe.{}".format(ilang,lang))
+      expt_files.append("en-{}/train.bpe.{}".format(ilang,lang))
+      expt_files.append("{}-en/test.bpe.{}".format(ilang,lang))
+      expt_files.append("en-{}/test.bpe.{}".format(ilang,lang))
+      expt_files.append("en-{}/test.tok.{}".format(ilang,lang))
+      expt_files.append("{}-en/test.tok.{}".format(ilang,lang))
+      expt_files.append("{}-en/dev.bpe.{}".format(ilang,lang))
+      expt_files.append("en-{}/dev.bpe.{}".format(ilang,lang))
+      expt_files.append("en-{}/dev.tok.{}".format(ilang,lang))
+      expt_files.append("{}-en/dev.tok.{}".format(ilang,lang))
+      expt_files.append("{}-en/logs".format(ilang))
+      expt_files.append("en-{}/logs".format(ilang))
+      expt_files.append("{}-en/scripts".format(ilang))
+      expt_files.append("en-{}/scripts".format(ilang))
+  return expt_files
+
+
+rule expts:
+  input:
+    get_expt_files
+
+rule make_logs:
+  output:
+    directory("{pair}/logs")
+
+  shell:
+    "mkdir -p {output}"
+
+rule make_scripts:
+  output:
+    directory("{pair}/scripts")
+
+  shell:
+    """
+      mkdir -p {output}
+      cp {TEMPLATE}/train.sh {output}
+      cp {TEMPLATE}/config.yml {output}
+      cp {TEMPLATE}/eval-best.sh {output}
+      cp {TEMPLATE}/validate.sh {output}
+      PAIR=`dirname {output}`
+      WDIR={EXPT_DIR}/$PAIR
+      SRC=${{PAIR:0:2}}
+      TGT=${{PAIR:3:2}}
+      cat {TEMPLATE}/vars | sed -e "s,__WORKING_DIR__,$WDIR,g" | sed -e 's,__MOSES_SCRIPTS__,{MOSES_SCRIPTS},g' | sed -e 's,__MARIAN_BIN__,{MARIAN_BIN},g' | sed -e 's,__SUBWORD_MT__,{SUBWORD_NMT},g' | sed -e 's,__GPUS__,0,g' | sed -e "s,__SRC__,$SRC,g" | sed -e "s,__TGT__,$TGT,g" > {output}/vars
+    """
+
+rule make_reverse:
+  output:
+    "en-{language}/{stem}.{type}.{lang}"
+
+  input:
+    "{language}-en/{stem}.{type}.{lang}"
+
+  wildcard_constraints:
+    type = "(bpe)|(tok)"
+
+  shell:
+    "mkdir -p en-{wildcards[language]} ; cp {input} {output}"
+
+rule filter_dev:
+  output:
+    "{language}-en/dev.bpe.en", "{language}-en/dev.bpe.{language}", "{language}-en/dev.tok.en", "{language}-en/dev.tok.{language}"
+  input:
+    "{language}-en/dev-unfiltered.bpe.en", "{language}-en/dev-unfiltered.bpe.{language}", "{language}-en/dev-unfiltered.tok.en", "{language}-en/dev-unfiltered.tok.{language}"
+
+  run:
+    with \
+      open(input[0]) as ifh0, open(input[1]) as ifh1, open(input[2]) as ifh2, open(input[3]) as ifh3,\
+      open(output[0], "w") as ofh0, open(output[1], "w") as ofh1, open(output[2], "w") as ofh2, open(output[3], "w") as ofh3:
+      for l0,l1,l2,l3 in zip(ifh0, ifh1, ifh2, ifh3):
+        if len(l0[:-1].split()) > 50 or len(l1[:-1].split()) > 50:
+          continue
+        print(l0, file=ofh0, end="")
+        print(l1, file=ofh1, end="")
+        print(l2, file=ofh2, end="")
+        print(l3, file=ofh3, end="")
+
+rule train_bpe:
+  output:
+     "{dirname}/bpe.model.{lang}"
+
+  input:
+    "{dirname}/train.tc.{lang}"
+
+  shell:
+    "{SUBWORD_NMT}/learn_bpe.py -i {input}  -s {BPE_MERGES} -o {output}"
+
+  
+rule bpe:
+  output:
+    "{language}-en/{stem}.bpe.{lang}"
+
+  input:
+    "{language}-en/{stem}.tc.{lang}", "{language}-en/bpe.model.{lang}"
+
+  wildcard_constraints:
+    stem  = "(train)|(dev-unfiltered)|(test)"
+
+  shell:
+    "{SUBWORD_NMT}/apply_bpe.py -c {input[1]}  < {input[0]} > {output}"
+
+
+rule true_en:
+  output:
+    "{dirname}/{stem}.tc.en"
+
+  input:
+    "{dirname}/{stem}.tok.en", "{dirname}/truecase_model.en"
+
+  shell:
+    "{MOSES_SCRIPTS}/recaser/truecase.perl -model {input[1]} < {input[0]} > {output}"
+
+rule true_ind:
+  output:
+    "{stem}.tc.{language}"
+
+  input:
+    "{stem}.tok.{language}"
+
+  wildcard_constraints:
+    language = "|".join(["(" + l + ")" for l in ILANGS])
+
+  shell:
+    "cp {input} {output}"
+
+rule train_truecaser:
+  output:
+    "{language}-en/truecase_model.{lang}"
+
+  input:
+    "{language}-en/train.tok.{lang}"
+
+  shell:
+    "{MOSES_SCRIPTS}/recaser/train-truecaser.perl -model {output} -corpus {input}"
+
+
+
+rule tok_en:
+  output:
+    "{stem}.tok.en"
+
+  input:
+    "{stem}.norm.en"
+
+  shell:
+    "{MOSES_SCRIPTS}/tokenizer/tokenizer.perl -l en -a < {input} > {output}"
+
+rule tok_ind:
+  output:
+    "{stem}.tok.{language}"
+
+  input:
+    "{stem}.norm.{language}"
+
+  wildcard_constraints:
+    language = "|".join(["(" + l + ")" for l in ILANGS])
+
+  shell:
+    "PYTHONPATH={INDIC_NLP} python3 {INDIC_NLP}/indicnlp/tokenize/indic_tokenize.py {input} {output} {wildcards[language]}"
+
+
+
+rule norm_en:
+  output:
+    "{stem}.norm.en"
+
+  input:
+    "{stem}.raw.en"
+
+  shell:
+    "{MOSES_SCRIPTS}/tokenizer/normalize-punctuation.perl -l en < {input} > {output}"
+
+
+rule norm_ind:
+  output:
+    "{stem}.norm.{language}"
+
+  input:
+    "{stem}.raw.{language}"
+
+  wildcard_constraints:
+    language = "|".join(["(" + l + ")" for l in ILANGS])
+
+  shell:
+    "PYTHONPATH={INDIC_NLP} python3 {INDIC_NLP}/indicnlp/normalize/indic_normalize.py {input} {output} {wildcards[language]}"
+
+
+rule get_raw_train_en:
+  output:
+    "{language}-en/train.raw.en"
+
+  shell:
+    "cut -f 1 {CORPUS}{wildcards[language]}-en.tsv | head -n -2000 > {output}" 
+
+rule get_raw_train_ind:
+  output:
+    "{language}-en/train.raw.{language}"
+
+  shell:
+    "cut -f 2 {CORPUS}{wildcards[language]}-en.tsv | head -n -2000 > {output}" 
+
+
+rule get_raw_test_en:
+  output:
+    "{language}-en/test.raw.en"
+
+  shell:
+    "cut -f 1 {CORPUS}{wildcards[language]}-en.tsv | tail -n 1000 > {output}" 
+
+rule get_raw_test_ind:
+  output:
+    "{language}-en/test.raw.{language}"
+
+  shell:
+    "cut -f 2 {CORPUS}{wildcards[language]}-en.tsv | tail -n 1000  > {output}" 
+
+rule get_raw_dev_en:
+  output:
+    "{language}-en/dev-unfiltered.raw.en"
+
+  shell:
+    "set +o pipefail; cut -f 1 {CORPUS}{wildcards[language]}-en.tsv | tail -n 2000 | head -n 1000 > {output}" 
+
+rule get_raw_dev_ind:
+  output:
+    "{language}-en/dev-unfiltered.raw.{language}"
+
+  shell:
+    "set +o pipefail; cut -f 2 {CORPUS}{wildcards[language]}-en.tsv | tail -n 2000 | head -n 1000 > {output}" 
+
+
+#rule filter_dev_tsv:
+#  output:
+#    "{language}-en/dev.raw.en", "{language}-en/dev.raw.{language}"
+#
+#  input:
+#    "{language}-en/dev.raw.tsv"
+#
+#  run:
+#    with open(input[0]) as ifh, open(output[0], "w") as sfh, open(output[1], "w") as tfh:
+#      for line in ifh:
+#        src,tgt = line[:-1].split("\t")
+#        if len(src.split()) > 50 or len(tgt.split()) > 50:
+#          continue
+#        print(src, file=sfh)
+#        print(tgt, file=tfh)
+#
+#
+#rule get_dev_tsv:
+#  output:
+#    "{language}-en/dev.raw.tsv"
+#
+#    
+#  shell:
+#    "set +o pipefail; tail -n 2000  {CORPUS}{wildcards[language]}-en.tsv | head -n 1000 > {output}" 
