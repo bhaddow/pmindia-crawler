@@ -14,6 +14,7 @@ The following dependencies are required:
 * [hunalign](http://mokk.bme.hu/en/resources/hunalign/) A heuristic sentence aligner.
 * [vecalign](https://github.com/thompsonb/vecalign) A recent sentence aligner based on sentence embedding (optional)
 * [The Pavlick Dictionaries](https://cs.brown.edu/people/epavlick/data.html) Crowd-sourced dictionaries available in many languages.
+* [Moses](https://github.com/moses-smt/mosesdecoder) We use the Moses sentence splitter.
 
 To run the crawling/alignment, you use snakemake, with the targets listed at the top of the Snakefile. Assuming the configuration variables are set correctly, and the dependencies are installed, you can crawl with:
 ```
