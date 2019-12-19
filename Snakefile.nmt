@@ -6,11 +6,11 @@ ILANGS = ["hi", "as", "bn", "kn", "ml", "mni", "mr", "or", "pa", "ta", "te", "ur
 MOSES_SCRIPTS = "/home/bhaddow/moses.new/scripts"
 INDIC_NLP = "/home/bhaddow/code/indic_nlp_library/bhaddow/src"
 MARIAN_BIN = "/home/bhaddow/code/marian/dev-github/build-63e1cfe"
-CORPUS = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/working/release/parallel/pmindia.v1."
-TEMPLATE = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/nmt-scripts"
+CORPUS = "/home/bhaddow/code/pmindia-crawler/working/release/parallel/pmindia.v1."
+TEMPLATE = "/home/bhaddow/code/code/pmindia-crawler/nmt-scripts"
 SUBWORD_NMT = "/home/bhaddow/tools/subword-nmt/subword_nmt"
 BPE_MERGES = 10000
-EXPT_DIR = "/home/bhaddow/experiments/paracrawl/gujarati/crawl/pmindia/working/nmt"
+EXPT_DIR = "/home/bhaddow/code/code/pmindia-crawler/working/nmt"
 
 workdir: EXPT_DIR
 
