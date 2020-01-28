@@ -33,10 +33,17 @@ snakemake release_all
 If you use the code or corpus, then please cite:
 
 ```
-@article{pmindia,
-  author = "Barry Haddow and Faheem Kirefu",
-  title = "TBD",
-  year = "2020"
+@ARTICLE{2020arXiv200109907H,
+       author = {{Haddow}, Barry and {Kirefu}, Faheem},
+        title = "{PMIndia -- A Collection of Parallel Corpora of Languages of India}",
+      journal = {arXiv e-prints},
+     keywords = {Computer Science - Computation and Language},
+         year = "2020",
+        month = "Jan",
+          eid = {arXiv:2001.09907},
+        pages = {arXiv:2001.09907},
+archivePrefix = {arXiv},
+       eprint = {2001.09907},
 }
 ```
 
